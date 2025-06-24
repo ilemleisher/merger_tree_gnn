@@ -5,9 +5,9 @@ This repository contains the code used in Leisher et al. in prep. to train a Gra
 
 Here is a brief description of the codes in this repository:
 - ``` Merger_Tree_Script.py ```: loads data features from subhalos in the merger tree of a given box and saves them in a container.
-- ``` GNN_script.py ```: adapted script from [PabloVD's CosmoGraphNet](https://github.com/PabloVD/CosmoGraphNet). Creates and trains a GNN on selected data from the merger tree containers across all boxes. For more details regarding the architecture and training process, I highly recommend looking at CosmoGraphNet.
+- ``` Graph_Functions.py ```: defines functions to create the PyTorch Graphs and prepare the data for the GNN.
+- ``` GNN_example.ipynb ```: example notebook for using the codes and training the GNN. Contains adapted code from [PabloVD's CosmoGraphNet](https://github.com/PabloVD/CosmoGraphNet). Creates and trains a GNN on selected data from the merger tree containers across all boxes. For more details regarding the architecture and training process, I highly recommend looking at CosmoGraphNet.
 - ``` WDM_TNG_MW_SB4_parameters.txt ```: cosmological and astrophysical parameters from the SB4 WDM MW zoom-in simulation suite.
-- ``` GNN_example.ipynb ```: example notebook for using the scripts.
 
 ## Required Dependencies
 Here are the libraries required for running the codes:
