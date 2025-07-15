@@ -121,13 +121,15 @@ def create_dataset(cat, params):
 
     nodes = []
     for arg in cat:
-        if arg != 'DMMass' and arg != 'StellarMass':
+        if arg != 'DMMass' and arg != 'StellarMass' and arg != 'GasMass':
             nodes.append(cat[arg])
         else:
             if arg == 'DMMass':
-                nodes.append([i[0] for i in cat['SubhaloMassType']])
+                nodes.append([i[1] for i in cat['SubhaloMassType']])
             if arg == 'StellarMass':
                 nodes.append([i[4] for i in cat['SubhaloMassType']])
+            if arg == 'GasMass':
+                nodes.append([i[0] for i in cat['SubhaloMassType']])
     
     nodes_tuple = tuple(nodes)
 
