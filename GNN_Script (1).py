@@ -6,6 +6,7 @@ from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
 import torch_geometric as torchg
 import torch_scatter as torchs
+import random
 import sys
 
 def get_params(file):
@@ -27,6 +28,7 @@ def get_params(file):
     fiducial = np.array([1,3.6,7.4,.1]) #fiducial TNG values
     params = sample * fiducial
     params[:,0] = 1/params[:,0]
+    #ask Jonah about
     
     return params
 
@@ -136,6 +138,8 @@ def create_dataset(cat, params):
     
     data = np.column_stack(nodes_tuple) #Node features associated with each node in the graph
     x = torch.tensor(data, dtype=torch.float32)
+    # if len(sys.argv) == 4:
+    #     x = x.T
         
     ngal = len(snap)
     u = np.log10(ngal).reshape(1,1)
@@ -207,7 +211,9 @@ def split_dataset(dataset, train_size, valid_size, test_size):
      - valid_dataset - pytorch_geometric Data objects randomly selected to be in the validation set
      - test_dataset  - pytorch_geometric Data objects randomly selected to be in the testing set
     """
-    np.random.shuffle(dataset)
+
+    random.seed(5)
+    random.shuffle(dataset)
     
     ndata = len(dataset)
     split_valid = int(np.floor(valid_size * ndata))
@@ -226,23 +232,22 @@ class Hyperparameters():
     This object acts as a container for the hyperparameters that are used during training.
     This object is also used to name files that are stored during training and testing.
     """
-    def __init__(self, lr, wd, nl, hc, rl, ne, name):
+    def __init__(self, lr, wd, nl, hc, ne, name):
         
         self.learning_rate = lr
         self.weight_decay = wd
         self.n_layers = nl
         self.hidden_channels = hc
-        self.r_link = rl
         self.n_epochs = ne #set small at first
         self.study_name = name
         self.outmode = 'cosmo'
         self.pred_params = 1
         
     def __repr__(self):
-        return f"lr {self.learning_rate:.2e}; wd {self.weight_decay:.2e}; nl {self.n_layers}; hc {self.hidden_channels}; rl {self.r_link:.2e}"
+        return f"lr {self.learning_rate:.2e}; wd {self.weight_decay:.2e}; nl {self.n_layers}; hc {self.hidden_channels}"
     
     def name_model(self):
-        return f"{name}_lr_{self.learning_rate:.2e}_wd_{self.weight_decay:.2e}_nl_{self.n_layers}_hc_{self.hidden_channels}_rl_{self.r_link:.2e}"
+        return f"{name}_lr_{self.learning_rate:.2e}_wd_{self.weight_decay:.2e}_nl_{self.n_layers}_hc_{self.hidden_channels}"
 
 ## GNN
 
@@ -303,11 +308,10 @@ class NodeModel(torch.nn.Module):
         return out
 
 class GNN(torch.nn.Module):
-    def __init__(self, node_features, n_layers, hidden_channels, linkradius, dim_out, only_positions, residuals=True):
+    def __init__(self, node_features, n_layers, hidden_channels, dim_out, only_positions, residuals=True):
         super().__init__()
 
         self.n_layers = n_layers
-        self.link_r = linkradius
         self.dim_out = dim_out
         self.only_positions = only_positions
 
@@ -494,58 +498,7 @@ def test(loader, model, hparams):
 
     return loss_tot/len(loader), np.array(errs).mean(axis=0)
 
-def objective(trial):
-    """
-    This function is given to optuna to tune hyperparameters. Given the current trial, optuna will suggest new hyperparameters for this training session.
-    
-    Inputs
-     - trial - an optuna object containing information on the current training session
-     
-    Returns
-     - test_loss - the log loss from the testing dataset, used to compare trials and choose hyperparameters
-    """
-    hparams.learning_rate = trial.suggest_float("learning_rate", 1e-7, 1e-3, log=True)
-    hparams.weight_decay = trial.suggest_float("weight_decay", 1e-9, 1e-6, log=True)
-    hparams.n_layers = trial.suggest_int("n_layers", 1, 5)
-    hparams.hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256, 512])
-    hparams.r_link = trial.suggest_int("r_link", 0, 300, log=False)
-    
-    dataset = []
-    for i in range(len(catalogs)):
-        dataset.append(create_dataset(catalogs[i], hparams.r_link/boxsize, params[i]))
-        
-    model = GNN(node_features=dataset[0].x.shape[1],
-            n_layers=hparams.n_layers,
-            hidden_channels=hparams.hidden_channels,
-            linkradius=hparams.r_link,
-            dim_out=len(prediction)*2,
-            only_positions=False)
-    
-    if torch.cuda.is_available():
-        device = torch.device('cuda') #gpu
-    else:
-        device = torch.device('cpu')
-    model.to(device)
-        
-    train_data, valid_data, test_data = split_dataset(dataset, train_size, valid_size, test_size)
-    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
-    valid_loader = DataLoader(valid_data, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
-    
-    train_losses, valid_losses = train_model(model, train_loader, valid_loader, hparams)
-    
-    np.save(f"Outputs/train_loss_{hparams.name_model()}", train_losses)
-    np.save(f"Outputs/valid_loss_{hparams.name_model()}", valid_losses)
-    
-    state_dict = torch.load("Models/"+hparams.name_model(), map_location=device)
-    model.load_state_dict(state_dict)
-    
-    test_loss, err = test(test_loader, model, hparams)
-    
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-    
-    return test_loss
+
 
 def objective(trial):
     """
@@ -561,7 +514,6 @@ def objective(trial):
     hparams.weight_decay = trial.suggest_float("weight_decay", 1e-9, 1e-6, log=True)
     hparams.n_layers = trial.suggest_int("n_layers", 1, 5)
     hparams.hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256, 512])
-    hparams.r_link = trial.suggest_int("r_link", 0, 300, log=False)   # can delete
     
     dataset = []
     for i in range(len(catalogs)):
@@ -570,7 +522,6 @@ def objective(trial):
     model = GNN(node_features=dataset[0].x.shape[1],
             n_layers=hparams.n_layers,
             hidden_channels=hparams.hidden_channels,
-            linkradius=hparams.r_link,
             dim_out=len(prediction)*2,
             only_positions=False)
     
@@ -601,12 +552,12 @@ def objective(trial):
     return test_loss
 
 ## Data to be loaded in
-with open('merger_tree_data', 'rb') as f: #<--- YOUR DATA HERE. Format follows the output from Merger_Tree_Script.py
+with open('30data', 'rb') as f:
     catalogs = pickle.load(f)
 
 # path to parameter file
 
-param_path = 'WDM_TNG_MW_SB4_parameters.txt'
+param_path = 'edit2_WDM_TNG_MW_SB4.txt'
 params = []
 boxes = range(1024)
 for box in boxes:
@@ -660,20 +611,18 @@ stellar_mass_thresh = 0  #only include satellites above this stellar mass
 boxsize = 100000 / h       #box size, don't change this
 prediction = [0]   
 
-rl = 300 #Might need to be changed
 lr = 7e-4      #learning rate
 wd = 2e-8      #weight decay
 nl = 2         #number of layers
 hc = 512       #hidden channels (power of 2)
 n_epochs = 1000  #number of epochs
-hparams = Hyperparameters(lr, wd, nl, hc, rl, n_epochs, name)
+hparams = Hyperparameters(lr, wd, nl, hc, n_epochs, name)
 print(hparams)
 
 ## Create GNN based on hyperparameters
 model = GNN(node_features=dataset[0].x.shape[1],
             n_layers=hparams.n_layers,
             hidden_channels=hparams.hidden_channels,
-            linkradius=hparams.r_link,
             dim_out=len(prediction)*2,
             only_positions=False)
 
@@ -719,7 +668,6 @@ print(best_trial)
 hparams.learning_rate = best_trial.params["learning_rate"]
 hparams.n_layers = best_trial.params["n_layers"]
 hparams.hidden_channels = best_trial.params["hidden_channels"]
-hparams.r_link = best_trial.params["r_link"]
 hparams.weight_decay = best_trial.params['weight_decay']
 
 outputs = np.load("Outputs/outputs_"+hparams.name_model()+".npy")
