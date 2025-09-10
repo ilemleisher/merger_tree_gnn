@@ -11,7 +11,8 @@ Here is a brief description of the codes in this repository:
 - ``` GNN_example.ipynb ```: example notebook for using the codes and training the GNN. Contains adapted code from [PabloVD's CosmoGraphNet](https://github.com/PabloVD/CosmoGraphNet). Creates and trains a GNN on selected data from the merger tree containers across all boxes. For more details regarding the architecture and training process, I highly recommend looking at CosmoGraphNet.
 - ``` WDM_TNG_MW_SB4_parameters.txt ```: cosmological and astrophysical parameters from the SB4 WDM MW zoom-in simulation suite.
 - ``` GNN_Script.py```: script that loads merger tree data from ```Merger_Tree_Script.py``` and trains a GNN with specified node features from the merger trees. Formatted to be ran via Slurm from ```Slurm_Script.sh```. Line 602 must be edited.
-- ```Slurm_Script.sh```: script that creates and submits a Slurm job to train a GNN via ```GNN_Script.py```. 
+- ```Slurm_Script.sh```: script that creates and submits a Slurm job to train a GNN via ```GNN_Script.py```.
+- ```dreams.py```: a functions script used with ```Merger_tree_script.py```.
 
 ## Required Dependencies
 Here are the libraries required for running the codes:
