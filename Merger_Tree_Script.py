@@ -224,7 +224,7 @@ for box in to_run:
                          "SubhaloGasMetallicity","SubhaloHalfmassRad","SubhaloLen","SubhaloParent",
                          "SubhaloPos","SubhaloSpin","SubhaloStarMetalFractions","SubhaloStarMetallicity",
                          "SubhaloStellarPhotometrics","SubhaloVel","SubhaloVelDisp","SubhaloVmax","SubhaloWindMass"])
-    datalist.append(-1)
+    datalist.append(counter)
     print('')
 _s_ = f"Total Success Rate: {counter}/{len(to_run)}"
 print('!'*(len(_s_) + 10))
