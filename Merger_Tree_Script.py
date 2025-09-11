@@ -14,7 +14,7 @@ savetag = 'DREAMS_WDM_zoom'
 basedir = '/standard/DREAMS/'
 
 ## Tree Walking Function
-def walk_tree(box_to_process, counter, args):
+def walk_tree(box_to_process, args):
     """
     This function walks the merger tree within a box. Starts at snapshot 90/redshift 0 with milky way subhalo and 
     works top to bottom following all branches.
@@ -46,7 +46,6 @@ def walk_tree(box_to_process, counter, args):
     first_sub    = cat['GroupFirstSub'][cat_idx]
     target_mass  = cat['GroupMass'][cat_idx] * 1.00E+10/h
     subfind_mass = cat['SubhaloMassType'][first_sub,4] * 1.00E+10/h
-    print('Subfind Mass:',np.log10(target_mass))
     
     keys  = ['FirstSubhaloInFOFGroupID','NextSubhaloInFOFGroupID','SubfindID',
              'DescendantID','MainLeafProgenitorID','SnapNum','SubhaloMassType',
@@ -55,31 +54,8 @@ def walk_tree(box_to_process, counter, args):
              'GroupMass']
     
     sublink = dreams.load_slink(grpdir + 'tree_extended.hdf5', keys)
-    
-    try:
-        mw_idx = dreams.get_MW_idx(sublink, tree=True)
-    except ValueError as e:
-        print(e)
-        print('❌❌❌❌❌❌❌ THIS BOX FAILED ❌❌❌❌❌❌❌')
-        return counter
-        
-    sublink_mass = np.log10(sublink['GroupMass'][mw_idx]*1.00E+10/h)
-    print('SubLink Mass:',sublink_mass)
-    
-    sf_pos = cat['GroupPos'][cat_idx,:]/h
-    sl_pos = sublink['GroupPos'][mw_idx,:]/h
-    
-    distance = np.sqrt(
-        (sf_pos[0] - sl_pos[0])**2 + 
-        (sf_pos[1] - sl_pos[1])**2 + 
-        (sf_pos[2] - sl_pos[2])**2 
-    )
-    
-    print('Subfind Position:',cat['GroupPos'][cat_idx,:]/h)
-    print('SubLink Position:',sublink['GroupPos'][mw_idx,:]/h)
-    print('✅ Subfind and SubLink Positions Agree' if distance < 1 else '❌ Subfind and SubLink Positions Disagree','\n')
+    mw_idx = dreams.get_MW_idx(sublink, tree=True)
     target = sublink['FirstSubhaloInFOFGroupID'][mw_idx]
-    print('Target Index',target)
     
     # Load merger tree
     with h5py.File( grpdir + 'tree_extended.hdf5', 'r' ) as tree_file:
@@ -91,24 +67,6 @@ def walk_tree(box_to_process, counter, args):
         
         file_index = np.arange(len(all_snaps))[all_snaps==snapnr][matching_index]
 
-        print('Location in tree file:',file_index)
-        
-        check_mass = np.log10(tree_file['GroupMass'][file_index]*1.00E+10/h)
-        print(f'✅ Target Found Successfully ({check_mass:0.3f})' \
-              if np.isclose(check_mass, sublink_mass) else '❌ Target Incorrect','\n')
-        
-        subfind_stellar_mass = np.log10(subfind_mass)
-        sublink_stellar_mass = np.log10(tree_file['SubhaloMassType'][file_index,4]*1.00E+10/h+1)
-        
-        print(f'✅ Subfind and SubLink Agree on Stellar Mass ({sublink_stellar_mass:0.3f})' \
-              if np.isclose(subfind_stellar_mass, sublink_stellar_mass) else\
-              f'❌ Subfind and SubLink Agree on Stellar Mass (SF: {subfind_stellar_mass:0.3f}, SL: {sublink_stellar_mass:0.3f})','\n')
-        
-        if np.isclose(subfind_stellar_mass, sublink_stellar_mass):
-            counter += 1
-        
-        return counter
-        
         rootID       = tree_file["SubhaloID"][file_index] # ID in the tree
         fpID         = tree_file["FirstProgenitorID"][file_index] # ID of the first progenitor (next most massive subhalo)
         current_npID = tree_file["NextProgenitorID"][file_index] # ID of the next progenitor (most massive subhalo after FP)
@@ -214,9 +172,10 @@ boxes = range(1024)
 datalist = []
 indices_to_remove = [1, 2, 4, 5, 6, 9, 10, 11, 14, 17, 18, 20]
 to_run = [item for i, item in enumerate(boxes) if i not in indices_to_remove]
-counter = 0
 for box in to_run:
-    counter = walk_tree(box,counter,["SubhaloSFR","SubhaloMass","SnapNum","SubhaloGrNr", "DescendantID", 
+    print(box)
+    try:
+        data = walk_tree(box,["SubhaloSFR","SubhaloMass","SnapNum","SubhaloGrNr", "DescendantID", 
                          "SubhaloID", "MainLeafProgenitorID", "LastProgenitorID","RootDescendantID",
                          "TreeID","FirstProgenitorID","NextProgenitorID","FirstSubhaloInFOFGroupID",
                          "NextSubhaloInFOFGroupID","NumParticles","MassHistory","GroupNsubs","SubhaloMassType",
@@ -224,12 +183,10 @@ for box in to_run:
                          "SubhaloGasMetallicity","SubhaloHalfmassRad","SubhaloLen","SubhaloParent",
                          "SubhaloPos","SubhaloSpin","SubhaloStarMetalFractions","SubhaloStarMetallicity",
                          "SubhaloStellarPhotometrics","SubhaloVel","SubhaloVelDisp","SubhaloVmax","SubhaloWindMass"])
-    datalist.append(counter)
-    print('')
-_s_ = f"Total Success Rate: {counter}/{len(to_run)}"
-print('!'*(len(_s_) + 10))
-print('!!!  '+_s_+'  !!!')
-print('!'*(len(_s_) + 10))
+        datalist.append(data)
+    except Exception as e:
+        print(box)
+        print(e)
 
 with open('31data','wb') as f:
     pickle.dump(datalist, f)
