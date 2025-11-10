@@ -28,4 +28,4 @@ Here are the libraries required for running the codes:
 ## Note
 These scripts are all set up to be run specifically on the Rivanna HPC cluster within torrey-group, with data from the DREAMS SB4 WDM MW zoom-in simulation suite. These scripts could be adapted to run either on different suites within DREAMS, different simulations altogether, or with different HPCs, but in general, they are not meant to be used without HPC or simulation suites. Please feel free to reach out to ilemleisher@gmail.com with any questions about usage or adapting the codes.
 
-If you use this code, please link this repository and cite Leisher et al. in prep.
+If you use this code, please link this repository and cite https://arxiv.org/abs/2511.05367.
