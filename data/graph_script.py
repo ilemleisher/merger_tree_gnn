@@ -1,9 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py, os, optuna, torch, pickle
-from scipy.spatial import KDTree
 from torch_geometric.data import Data
-from torch_geometric.loader import DataLoader
 import torch_geometric as torchg
 import torch_scatter as torchs
 import sys
