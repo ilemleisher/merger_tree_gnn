@@ -116,18 +116,15 @@ def create_dataset(cat, params):
 
     nodes = []
 
-    for arg in sys.argv[4:]:
-        if type(cat[arg]) != np.ndarray:
-            nodes.append(cat[arg])
+    for key in sys.argv[4:]:
+        if type(cat[key][0]) == np.ndarray:
+            for dim in range(len(cat[key][0])):
+                nodes.append([i[dim] for i in cat[key]])
         else:
-            for i in len(cat[arg]):
-              nodes.append(cat[arg][i])
-
-    revisit this!! ^^^^
+            nodes.append(cat[key])
     
     nodes_tuple = tuple(nodes)
 
-    
     data = np.column_stack(nodes_tuple) #Node features associated with each node in the graph
     x = torch.tensor(data, dtype=torch.float32)
         
