@@ -1,13 +1,19 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import h5py, os, optuna, torch, pickle
-from scipy.spatial import KDTree
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
 import torch_geometric as torchg
 import torch_scatter as torchs
 import random
 import sys
+
+# Move to gpu/cpu
+if torch.cuda.is_available():
+    device = torch.device('cuda') #gpu
+else:
+    device = torch.device('cpu')
+model.to(device)
+print(device)
 
 def split_dataset(dataset, train_size, valid_size, test_size):
     """
@@ -52,7 +58,7 @@ class Hyperparameters():
         self.weight_decay = wd
         self.n_layers = nl
         self.hidden_channels = hc
-        self.n_epochs = ne #set small at first
+        self.n_epochs = ne
         self.study_name = name
         self.outmode = 'cosmo'
         self.pred_params = 1
@@ -61,7 +67,7 @@ class Hyperparameters():
         return f"lr {self.learning_rate:.2e}; wd {self.weight_decay:.2e}; nl {self.n_layers}; hc {self.hidden_channels}"
     
     def name_model(self):
-        return f"{name}_lr_{self.learning_rate:.2e}_wd_{self.weight_decay:.2e}_nl_{self.n_layers}_hc_{self.hidden_channels}"
+        return f"{self.study_name}_lr_{self.learning_rate:.2e}_wd_{self.weight_decay:.2e}_nl_{self.n_layers}_hc_{self.hidden_channels}"
 
 ## GNN
 
@@ -312,74 +318,72 @@ def test(loader, model, hparams):
 
     return loss_tot/len(loader), np.array(errs).mean(axis=0)
 
-    if __name__ == "__main__":
+add optimize !!!!
+
+if __name__ == "__main__":
+    
+    with open(sys.argv[1], 'rb') as f:
+        dataset = pickle.load(f)
+    
+    train_size = 0.8
+    valid_size = 0.1
+    test_size  = 0.1
+    batch_size = 32
+    
+    train_data, valid_data, test_data = split_dataset(dataset, train_size, valid_size, test_size)
+    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True) 
+    valid_loader = DataLoader(valid_data, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
+    
+    
+    name = "test_gnn"          #name that files will be saved as. Should be different for every unique GNN that you train
+    boxes = range(1024)        #which simulations you include
+    prediction = [0]   
+    
+    # Initial hyperparameters. Choice doesn't matter much since they will be tuned anyways
+    lr = 7e-4      #learning rate
+    wd = 2e-8      #weight decay
+    nl = 2         #number of layers
+    hc = 512       #hidden channels (power of 2)
+    n_epochs = 1000  #number of epochs
+    hparams = Hyperparameters(lr, wd, nl, hc, n_epochs, name)
+
+    os.makedirs("Models", exist_ok=True)
+    os.makedirs("Outputs", exist_ok=True)
+    
+    # Create GNN with the on hyperparameters
+    model = GNN(node_features=dataset[0].x.shape[1],
+                n_layers=hparams.n_layers,
+                hidden_channels=hparams.hidden_channels,
+                dim_out=len(prediction)*2,
+                only_positions=False)
+    
+    train_losses, valid_losses = train_model(model, train_loader, valid_loader, hparams)
+    
+    state_dict = torch.load("Models/"+hparams.name_model(), map_location=device)
+    model.load_state_dict(state_dict)
+    
+    test_loss, err = test(test_loader, model, hparams)
+    valid_loss = np.min(valid_losses)
+    train_loss = train_losses[np.argmin(valid_losses)]
+    print(train_loss, valid_loss, test_loss)
         
-        dataset = sys.argv[1]
-        
-        train_size = 0.8
-        valid_size = 0.1
-        test_size  = 0.1
-        batch_size = 32
-        
-        train_data, valid_data, test_data = split_dataset(dataset, train_size, valid_size, test_size)
-        train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True) 
-        valid_loader = DataLoader(valid_data, batch_size=batch_size, shuffle=True)
-        test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
-        
-        
-        name = "test_gnn"          #name that files will be saved as. Should be different for every unique GNN that you train
-        boxes = range(1024)        #which simulations you include
-        prediction = [0]   
-        
-        # Initial hyperparameters. Choice doesn't matter much since they will be tuned anyways
-        lr = 7e-4      #learning rate
-        wd = 2e-8      #weight decay
-        nl = 2         #number of layers
-        hc = 512       #hidden channels (power of 2)
-        n_epochs = 1000  #number of epochs
-        hparams = Hyperparameters(lr, wd, nl, hc, n_epochs, name)
-        
-        # Create GNN with the on hyperparameters
-        model = GNN(node_features=dataset[0].x.shape[1],
-                    n_layers=hparams.n_layers,
-                    hidden_channels=hparams.hidden_channels,
-                    dim_out=len(prediction)*2,
-                    only_positions=False)
-        
-        # Move to gpu/cpu
-        if torch.cuda.is_available():
-            device = torch.device('cuda') #gpu
-        else:
-            device = torch.device('cpu')
-        model.to(device)
-        print(device)
-        
-        train_losses, valid_losses = train_model(model, train_loader, valid_loader, hparams)
-        
-        state_dict = torch.load("Models/"+hparams.name_model(), map_location=device)
-        model.load_state_dict(state_dict)
-        
-        test_loss, err = test(test_loader, model, hparams)
-        valid_loss = np.min(valid_losses)
-        train_loss = train_losses[np.argmin(valid_losses)]
-        print(train_loss, valid_loss, test_loss)
-            
-        #Hyperparameter tuning: multiple trials
-        
-        storage = f"sqlite:///{os.getcwd()}/Databases/optuna_{name}"
-        n_trials = 50
-        sampler = optuna.samplers.TPESampler(n_startup_trials=n_trials//3)
-        study = optuna.create_study(study_name=name, sampler=sampler, storage=storage, load_if_exists=True)
-        
-        study.optimize(objective, n_trials, gc_after_trial=True)
-        
-        trials = study.trials
-        losses = [el.value for el in trials]
-        print(losses)
-        
-        trials = study.trials
-        losses = [el.value for el in trials]
-        print([x for x in losses if x != None])
-        best_idx = np.argsort([x for x in losses if x != None])[0]
-        best_trial = trials[best_idx]
-        print(best_trial) # Prints the best trial after hyperparameter tuning
+    #Hyperparameter tuning: multiple trials
+    
+    storage = f"sqlite:///{os.getcwd()}/Databases/optuna_{name}"
+    n_trials = 50
+    sampler = optuna.samplers.TPESampler(n_startup_trials=n_trials//3)
+    study = optuna.create_study(study_name=name, sampler=sampler, storage=storage, load_if_exists=True)
+    
+    study.optimize(objective, n_trials, gc_after_trial=True)
+    
+    trials = study.trials
+    losses = [el.value for el in trials]
+    print(losses)
+    
+    trials = study.trials
+    losses = [el.value for el in trials]
+    print([x for x in losses if x != None])
+    best_idx = np.argsort([x for x in losses if x != None])[0]
+    best_trial = trials[best_idx]
+    print(best_trial) # Prints the best trial after hyperparameter tuning
