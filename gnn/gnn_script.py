@@ -393,6 +393,7 @@ if __name__ == "__main__":
 
     os.makedirs("Models", exist_ok=True)
     os.makedirs("Outputs", exist_ok=True)
+    os.makedirs("Databases", exist_ok=True)
     
     # Create GNN with the on hyperparameters
     model = GNN(node_features=dataset[0].x.shape[1],
@@ -421,10 +422,6 @@ if __name__ == "__main__":
     study = optuna.create_study(study_name=name, sampler=sampler, storage=storage, load_if_exists=True)
     
     study.optimize(objective, n_trials, gc_after_trial=True)
-    
-    trials = study.trials
-    losses = [el.value for el in trials]
-    print(losses)
     
     trials = study.trials
     losses = [el.value for el in trials]
