@@ -223,8 +223,7 @@ if __name__ == "__main__":
     elif sys.argv[2] == 'AGN':
         params = nparams[:,3:4]
 
-    # Uncomment to create edges for flattened tree
-    #test = "flattened_tree"
+    test = "normal" # Chooses which edges to draw. Can be "normal" or "flattened_tree".
     
     # Create dataset
     dataset = []
