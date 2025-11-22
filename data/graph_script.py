@@ -135,7 +135,7 @@ def create_dataset(cat, params):
     y = np.reshape(params, (1,params.shape[0]))
     y = torch.tensor(y, dtype=torch.float32)
 
-    edge_index = get_edges(subid,desid)
+    edge_index = get_edges(subid,desid,test)
     edge_index = torch.tensor(edge_index, dtype=torch.long)
 
     edge_attr=np.ones((edge_index.shape[1],3))
@@ -146,7 +146,7 @@ def create_dataset(cat, params):
     return graph
 
 
-def get_edges(subid,desid):
+def get_edges(subid,desid,test="normal"):
 
     """
     A function taken from Cosmographnet to create edges between a pair of nodes if their distance is less than the linking radius
@@ -154,23 +154,32 @@ def get_edges(subid,desid):
     Inputs
      - subid - list of subhalo ids from a single merger tree
      - desid - list of subhalo descendant ids from a single merger tree
+     - test - defines the type of edges you want to draw. Defaults to "normal", which is edges directed backwards in time.
 
     Returns
      - edge_index - Nx2 array of indecies which point to a pair nodes connected by an edge
     """
 
-    # Draws edges directed backwards in time
-    desid_to_idx = {}
-    for j, did in enumerate(desid):
-        desid_to_idx[did] = j
 
     start_edges = []
     end_edges = []
 
-    for i, sid in enumerate(subid):
-        if sid in desid_to_idx:
-            start_edges.append(i)
-            end_edges.append(desid_to_idx[sid])
+    if test == "flattened_tree": # Draw arbitrary edges (for flattened tree test)
+        for i in range(len(subid)):
+            if i != len(subid) and i != len(subid)-1:
+                start_edges.append([i])
+                end_edges.append([i+1])
+        
+    elif test == "normal": # Draw edges directed backwards in time
+        desid_to_idx = {}
+        for j, did in enumerate(desid):
+            desid_to_idx[did] = j
+        
+        for i, sid in enumerate(subid):
+            if sid in desid_to_idx:
+                start_edges.append(i)
+                end_edges.append(desid_to_idx[sid])
+    
     
     edges = []
     edges.append(start_edges)
@@ -186,6 +195,7 @@ def get_edges(subid,desid):
     return edge_index
 
 if __name__ == "__main__":
+    
     # Load in data
     with open(sys.argv[1], 'rb') as f:
         catalogs = pickle.load(f)
@@ -212,6 +222,9 @@ if __name__ == "__main__":
         params = nparams[:,2:3]
     elif sys.argv[2] == 'AGN':
         params = nparams[:,3:4]
+
+    # Uncomment to create edges for flattened tree
+    #test = "flattened_tree"
     
     # Create dataset
     dataset = []
