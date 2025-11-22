@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --gres=gpu
 #SBATCH --job-name=[job name]              # Job name (keep to <= 8 characters)
-#SBATCH --account=torrey-group          # Account to charge
+#SBATCH --account=[account]            # Account to charge
 #SBATCH --partition=gpu                 # Partition to run on
 #SBATCH --ntasks=1                      # Run on a single CPU
 #SBATCH --mem=64gb                       # Job memory request
@@ -17,9 +17,8 @@ conda activate
 module load cuda/12.4.1
 conda activate env3 #<--- change to your environment with the dependencies
 
-cd /your/path/to/GNN_Script.py
+cd merger_tree_gnn
 
-#python hptuning_script.py #parameter #version (integer) #node features
-python GNN_Script.py WDM 1 SnapNum SubhaloSFR StellarMass DMMass
+python gnn/GNN_Script.py data/merger_tree_graph_data SnapNum SubhaloSFR StellarMass DMMass  #<--- add or remove desired node features
 
 date
