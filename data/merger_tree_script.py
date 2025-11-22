@@ -180,7 +180,7 @@ if __name__ == "__main__":
     for box in to_run:
         print(box)
         try:
-            data = walk_tree(box,[sys.arg[3:])
+            data = walk_tree(box, sys.argv[3:])
             datalist.append(data)
         except Exception as e:
             print(box)
