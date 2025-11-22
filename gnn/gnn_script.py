@@ -1,5 +1,5 @@
 import numpy as np
-import h5py, os, optuna, torch, pickle
+import os, optuna, torch, pickle
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
 import torch_geometric as torchg
@@ -12,7 +12,6 @@ if torch.cuda.is_available():
     device = torch.device('cuda') #gpu
 else:
     device = torch.device('cpu')
-model.to(device)
 print(device)
 
 def split_dataset(dataset, train_size, valid_size, test_size):
@@ -332,10 +331,6 @@ def objective(trial):
     hparams.weight_decay = trial.suggest_float("weight_decay", 1e-9, 1e-6, log=True)
     hparams.n_layers = trial.suggest_int("n_layers", 1, 5)
     hparams.hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256, 512])
-    
-    dataset = []
-    for i in range(len(catalogs)):
-        dataset.append(create_dataset(catalogs[i], params[i]))
         
     model = GNN(node_features=dataset[0].x.shape[1],
             n_layers=hparams.n_layers,
@@ -384,7 +379,6 @@ if __name__ == "__main__":
     valid_loader = DataLoader(valid_data, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
     
-    
     name = "test_gnn"          #name that files will be saved as. Should be different for every unique GNN that you train
     boxes = range(1024)        #which simulations you include
     prediction = [0]   
@@ -406,7 +400,10 @@ if __name__ == "__main__":
                 hidden_channels=hparams.hidden_channels,
                 dim_out=len(prediction)*2,
                 only_positions=False)
-    
+
+    model.to(device)
+
+    # Initial training
     train_losses, valid_losses = train_model(model, train_loader, valid_loader, hparams)
     
     state_dict = torch.load("Models/"+hparams.name_model(), map_location=device)
@@ -417,8 +414,7 @@ if __name__ == "__main__":
     train_loss = train_losses[np.argmin(valid_losses)]
     print(train_loss, valid_loss, test_loss)
         
-    #Hyperparameter tuning: multiple trials
-    
+    # Hyperparameter tuning: multiple trials
     storage = f"sqlite:///{os.getcwd()}/Databases/optuna_{name}"
     n_trials = 50
     sampler = optuna.samplers.TPESampler(n_startup_trials=n_trials//3)
