@@ -218,5 +218,5 @@ if __name__ == "__main__":
     for i in range(len(catalogs)):
         dataset.append(create_dataset(catalogs[i], params[i]))
 
-    with open("merger_tree_graph_data", 'wb') as f:
+    with open("merger_tree_graph_data.pkl", 'wb') as f:
         pickle.dump(dataset, f)
