@@ -160,13 +160,17 @@ def get_edges(subid,desid):
     """
 
     # Draws edges directed backwards in time
+    desid_to_idx = {}
+    for j, did in enumerate(desid):
+        desid_to_idx[did] = j
+
     start_edges = []
     end_edges = []
-    for i in range(len(subid)):
-        for j in range(len(desid)):
-            if subid[i] == desid[j]:
-                start_edges.append([i])
-                end_edges.append([j])
+
+    for i, sid in enumerate(subid):
+        if sid in desid_to_idx:
+            start_edges.append(i)
+            end_edges.append(desid_to_idx[sid])
     
     edges = []
     edges.append(start_edges)
@@ -189,7 +193,7 @@ if __name__ == "__main__":
     # path to parameter file
     param_path = sys.argv[2]
     params = []
-    boxes = range(len(catalogs)))
+    boxes = range(len(catalogs))
     for box in boxes:
         try:
             param = get_params(param_path)[box]
