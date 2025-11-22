@@ -191,7 +191,7 @@ if __name__ == "__main__":
         catalogs = pickle.load(f)
     
     # path to parameter file
-    param_path = sys.argv[2]
+    param_path = sys.argv[3]
     params = []
     boxes = range(len(catalogs))
     for box in boxes:
@@ -204,13 +204,13 @@ if __name__ == "__main__":
     params = np.array(params)
     nparams = norm_params(params)
   
-    if sys.argv[3] == 'WDM':
+    if sys.argv[2] == 'WDM':
         params = nparams[:,0:1]
-    elif sys.argv[3] == 'SN1':
+    elif sys.argv[2] == 'SN1':
         params = nparams[:,1:2]
-    elif sys.argv[3] == 'SN2':
+    elif sys.argv[2] == 'SN2':
         params = nparams[:,2:3]
-    elif sys.argv[3] == 'AGN':
+    elif sys.argv[2] == 'AGN':
         params = nparams[:,3:4]
     
     # Create dataset
