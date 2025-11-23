@@ -4,10 +4,8 @@ import pickle, sys
 from sklearn.model_selection import RandomizedSearchCV, train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 import xgboost as xgb
 from xgboost import plot_importance
-import numpy as np
 from scipy.stats import uniform, randint
 
 # Define functions for loading data
