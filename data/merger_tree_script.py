@@ -165,14 +165,14 @@ def walk_tree(box_to_process, args):
 if __name__ == "__main__":
   
     #These boxes should always be removed, they are corrupted (as of 11/25). The corresponding box parameters have been removed from the parameters file.
-    indices_to_remove = [1, 2, 4, 5, 6, 9, 10, 11, 14, 17, 18, 19, 20, 21, 30, 42, 88] 
+    boxes_to_remove = [1, 2, 4, 5, 6, 9, 10, 11, 14, 17, 18, 19, 20, 21, 30, 42, 88] 
     
     datalist = []
   
     first_box = sys.argv[1]
     last_box = sys.argv[2]
     boxes = range(int(first_box),int(last_box))
-    to_run = [item for i, item in enumerate(boxes) if i not in indices_to_remove]
+    to_run = [item for i, item in boxes if i not in boxes_to_remove]
 
     for box in to_run:
         print(box)
