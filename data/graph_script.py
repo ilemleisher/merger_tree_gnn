@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import h5py, os, optuna, torch, pickle
 from torch_geometric.data import Data
 import torch_geometric as torchg
