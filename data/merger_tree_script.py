@@ -183,5 +183,5 @@ if __name__ == "__main__":
             print(box)
             print(e)
     
-    with open('raw_merger_tree_data','wb') as f:
+    with open('raw_merger_tree_data.pkl','wb') as f:
         pickle.dump(datalist, f)
