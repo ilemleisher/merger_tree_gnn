@@ -19,6 +19,6 @@ conda activate env3 #<--- change to your environment with the dependencies
 
 cd merger_tree_gnn
 
-python gnn/GNN_Script.py data/merger_tree_graph_data SnapNum SubhaloSFR StellarMass DMMass  #<--- add or remove desired node features
+python gnn/GNN_Script.py data/merger_tree_graph_data
 
 date
