@@ -3,7 +3,7 @@
 <img src="treefig-1.png" width="300" title="Visualization of an example merger tree."/>
 
 ## Overview
-This repository contains the code used in Leisher et al. 2025 to train a Graph Neural Network (GNN) on merger tree histories taken from a cosmological simulation suite within DREAMS. The codes first load subhalo data features from merger trees in Milky Way zoom-in simulation boxes in the DREAMS database. Then this data is converted into a Graph object using [PyTorch](https://pytorch-geometric.readthedocs.io/en/latest/), and finally a GNN is trained on these Graphs to infer simulation parameters. Both directories ```gnn``` and ```data``` have their own README files that explain how to run the scripts.
+This repository contains the code used in Leisher et al. 2025 to train a Graph Neural Network (GNN) on merger tree histories taken from a cosmological simulation suite within DREAMS. All codes are prepared to be run on an HPC cluster. The codes first load subhalo data features from merger trees in Milky Way zoom-in simulation boxes in the DREAMS database. Then this data is converted into a Graph object using [PyTorch](https://pytorch-geometric.readthedocs.io/en/latest/), and finally a GNN is trained on these Graphs to infer simulation parameters. Both directories ```gnn``` and ```data``` have their own README files that explain how to run the scripts.
 
 ## Required Dependencies
 Here are the libraries required for running the codes:
