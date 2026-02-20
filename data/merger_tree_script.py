@@ -10,7 +10,7 @@ savetag = 'DREAMS_WDM_zoom'
 basedir = '/standard/DREAMS/'
 
 ## Tree Walking Function
-def walk_tree(box_to_process, args):
+def walk_tree(box_to_process, *args):
     """
     This function walks the merger tree within a box. Starts at snapshot 90/redshift 0 with milky way subhalo and 
     works top to bottom following all branches.
