@@ -1,7 +1,5 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import h5py, os, optuna, torch, pickle
-from scipy.spatial import KDTree
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
 import torch_geometric as torchg
@@ -129,20 +127,8 @@ def create_dataset(cat, params):
     subid = cat['SubhaloID']
     desid = cat['DescendantID']
 
-    nodes = [snap]
-    # for arg in sys.argv[3:]:
-    #     if arg != 'DMMass' and arg != 'StellarMass' and arg != 'GasMass':
-    #         nodes.append(cat[arg])
-    #     else:
-    #         if arg == 'DMMass':
-    #             nodes.append([i[1] for i in cat['SubhaloMassType']])
-    #         if arg == 'StellarMass':
-    #             nodes.append([i[4] for i in cat['SubhaloMassType']])
-    #         if arg == 'GasMass':
-    #             nodes.append([i[0] for i in cat['SubhaloMassType']])
-    
+    nodes = [snap]    
     nodes_tuple = tuple(nodes)
-
     
     data = np.column_stack(nodes_tuple) #Node features associated with each node in the graph
     x = torch.tensor(data, dtype=torch.float32)
@@ -652,7 +638,6 @@ elif sys.argv[1] == 'AGN':
     params = nparams[:,3:4]
 
 ## Create dataset
-h = 0.6909
 dataset = []
 for i in range(len(catalogs)):
     dataset.append(create_dataset(catalogs[i], params[i]))
@@ -669,12 +654,6 @@ test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
 
 base_name = str(sys.argv[2])
 name = base_name              #name that files will be saved as. Should be different for every unique GNN that you train
-boxes = range(1024)        #which simulations you include, there are 1024 simulations
-snap = 90                  #which redshift you use, right now the script only works for snap >~ 60
-h = 0.6909                 #reduced hubble factor, don't change this
-dm_mass_thresh = 1e8       #only include satellites above this halo mass
-stellar_mass_thresh = 0  #only include satellites above this stellar mass
-boxsize = 100000 / h       #box size, don't change this
 prediction = [0]   
     
 name = base_name+"_trials"
