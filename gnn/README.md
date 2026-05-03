@@ -11,5 +11,7 @@ These codes can be used to train a GNN or XGBoost model for inferring parameter 
 - ```<path/to/dataset>```: the path to the raw merger tree dataset (before creating graphs; this is the output of ```merger_tree_script.py```). If the scripts in ```data``` are run unchanged, this should be ```raw_merger_tree_data.pkl```.
 - ```<path/to/parameter/file>```: the path to the parameter file. If unchanged, should be ```WDMM_TNG_MW_SB4_parameters.txt```.
 - Outputs: Prints the R-squared value of the best performance, and creates a normalized feature importance plot.
+### ```gnn_bootstrap.py```:
+- This script uses a bootstrap to train a GNN on a fixed sample of the complete merger tree dataset in order to evaluate testing inference variance.
 ### ```example_slurm_script.sh```:
 - An example Slurm job submission file for training the GNN with default epochs, trials, and dataset. 
