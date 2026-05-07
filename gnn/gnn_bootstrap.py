@@ -134,7 +134,6 @@ def create_dataset(cat, params):
 
     Inputs
      - cat - a dictionary made from the DREAMS simulations containing positions and desired node features
-     - rl  - linking length normalized to boxsize
      - params - an array of correct parameter values that will be used during training
 
     Results
@@ -151,8 +150,6 @@ def create_dataset(cat, params):
     
     data = np.column_stack(nodes_tuple) #Node features associated with each node in the graph
     x = torch.tensor(data, dtype=torch.float32)
-    # if len(sys.argv) == 4:
-    #     x = x.T
         
     ngal = len(snap)
     u = np.log10(ngal).reshape(1,1)
@@ -189,17 +186,17 @@ def get_edges(subid,desid):
 
     start_edges = []
     end_edges = []
-    # for i in range(len(subid)):
-    #     for j in range(len(desid)):
-    #         if subid[i] == desid[j]:
-    #             start_edges.append([i])
-    #             end_edges.append([j])
-
-    # for flattened tree
-    for i in range(len(subid)):
-        if i != len(subid) and i != len(subid)-1:
-            start_edges.append([i])
-            end_edges.append([i+1])
+    if sys.argv[4] == 'og':
+        for i in range(len(subid)):
+            for j in range(len(desid)):
+                if subid[i] == desid[j]:
+                    start_edges.append([i])
+                    end_edges.append([j])
+    elif sys.argv[4] == 'ne':
+        for i in range(len(subid)):
+            if i != len(subid) and i != len(subid)-1:
+                start_edges.append([i])
+                end_edges.append([i+1])
 
     rng = np.random.default_rng(seed=3)
     rng.shuffle(start_edges)
@@ -610,57 +607,6 @@ def run_bootstrap(dataset, hparams, B):
         "rmse": np.array(rmse_scores),
         "mae": np.array(mae_scores),
     }
-
-def objective(trial):
-    """
-    This function is given to optuna to tune hyperparameters. Given the current trial, optuna will suggest new hyperparameters for this training session.
-    
-    Inputs
-     - trial - an optuna object containing information on the current training session
-     
-    Returns
-     - test_loss - the log loss from the testing dataset, used to compare trials and choose hyperparameters
-    """
-    hparams.learning_rate = trial.suggest_float("learning_rate", 1e-7, 1e-3, log=True)
-    hparams.weight_decay = trial.suggest_float("weight_decay", 1e-9, 1e-6, log=True)
-    hparams.n_layers = trial.suggest_int("n_layers", 1, 5)
-    hparams.hidden_channels = trial.suggest_categorical("hidden_channels", [64, 128, 256, 512])
-    
-    dataset = []
-    for i in range(len(catalogs)):
-        dataset.append(create_dataset(catalogs[i], params[i]))
-        
-    model = GNN(node_features=dataset[0].x.shape[1],
-            n_layers=hparams.n_layers,
-            hidden_channels=hparams.hidden_channels,
-            dim_out=len(prediction)*2,
-            only_positions=False)
-    
-    if torch.cuda.is_available():
-        device = torch.device('cuda') #gpu
-    else:
-        device = torch.device('cpu')
-    model.to(device)
-        
-    train_data, valid_data, test_data = split_dataset(dataset, train_size, valid_size, test_size)
-    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
-    valid_loader = DataLoader(valid_data, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
-    
-    train_losses, valid_losses = train_model(model, train_loader, valid_loader, hparams)
-    
-    np.save(f"Outputs/train_loss_{hparams.name_model()}", train_losses)
-    np.save(f"Outputs/valid_loss_{hparams.name_model()}", valid_losses)
-    
-    state_dict = torch.load("Models/"+hparams.name_model(), map_location=device)
-    model.load_state_dict(state_dict)
-    
-    test_loss, err = test(test_loader, model, hparams)
-    
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-    
-    return test_loss
 
 ## Data to be loaded in
 with open('31data', 'rb') as f:
