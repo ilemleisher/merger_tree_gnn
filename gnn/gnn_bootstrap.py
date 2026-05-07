@@ -10,10 +10,29 @@ import copy
 
 np.random.seed(42)
 
-def bootstrap_dataset(dataset):
+def bootstrap_split(dataset, valid_frac=0.5):
     n = len(dataset)
-    indices = np.random.choice(n, size=n, replace=True)
-    return [dataset[i] for i in indices]
+
+    # bootstrap training indices
+    train_indices = np.random.choice(n, size=n, replace=True)
+
+    # out-of-bag indices
+    oob_indices = np.setdiff1d(np.arange(n), np.unique(train_indices))
+
+    # shuffle OOB
+    np.random.shuffle(oob_indices)
+
+    # split OOB into validation/test
+    split = int(valid_frac * len(oob_indices))
+
+    valid_indices = oob_indices[:split]
+    test_indices  = oob_indices[split:]
+
+    train_data = [dataset[i] for i in train_indices]
+    valid_data = [dataset[i] for i in valid_indices]
+    test_data  = [dataset[i] for i in test_indices]
+
+    return train_data, valid_data, test_data
 
 def get_params(file):
     """
@@ -170,12 +189,22 @@ def get_edges(subid,desid):
 
     start_edges = []
     end_edges = []
+    # for i in range(len(subid)):
+    #     for j in range(len(desid)):
+    #         if subid[i] == desid[j]:
+    #             start_edges.append([i])
+    #             end_edges.append([j])
+
+    # for flattened tree
     for i in range(len(subid)):
-        for j in range(len(desid)):
-            if subid[i] == desid[j]:
-                start_edges.append([i])
-                end_edges.append([j])
-    
+        if i != len(subid) and i != len(subid)-1:
+            start_edges.append([i])
+            end_edges.append([i+1])
+
+    rng = np.random.default_rng(seed=3)
+    rng.shuffle(start_edges)
+    rng.shuffle(end_edges)
+
     edges = []
     edges.append(start_edges)
     edges.append(end_edges)
@@ -492,68 +521,95 @@ def test(loader, model, hparams):
 
     return loss_tot/len(loader), np.array(errs).mean(axis=0)
 
-def run_bootstrap(train_data, valid_data, test_data, hparams, B=10):
-    all_preds = []
-    all_trues = []
+def run_bootstrap(dataset, hparams, B):
 
-    # --- FIX 1: control initialization ---
-    base_model = GNN(node_features=dataset[0].x.shape[1],
-                     n_layers=hparams.n_layers,
-                     hidden_channels=hparams.hidden_channels,
-                     dim_out=len(prediction)*2,
-                     only_positions=False)
+    r2_scores = []
+    rmse_scores = []
+    mae_scores = []
+
+    base_model = GNN(
+        node_features=dataset[0].x.shape[1],
+        n_layers=hparams.n_layers,
+        hidden_channels=hparams.hidden_channels,
+        dim_out=len(prediction)*2,
+        only_positions=False
+    )
 
     base_model.to(device)
     base_state = copy.deepcopy(base_model.state_dict())
 
     for b in range(B):
+
         print(f"\n=== Bootstrap {b+1}/{B} ===")
 
-        # --- resample training data ---
-        boot_train = bootstrap_dataset(train_data)
+        np.random.seed(42 + b) # for reproducibility 
+        torch.manual_seed(42 + b)
+        random.seed(42 + b)
+        
+        # fresh bootstrap split
+        train_data, valid_data, test_data = bootstrap_split(dataset)
 
-        train_loader = DataLoader(boot_train, batch_size=batch_size, shuffle=True)
+        train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
         valid_loader = DataLoader(valid_data, batch_size=batch_size, shuffle=True)
         test_loader  = DataLoader(test_data,  batch_size=batch_size, shuffle=False)
 
-        # --- FIX 2: reset model to SAME initialization ---
-        model = GNN(node_features=dataset[0].x.shape[1],
-                    n_layers=hparams.n_layers,
-                    hidden_channels=hparams.hidden_channels,
-                    dim_out=len(prediction)*2,
-                    only_positions=False)
+        model = GNN(
+            node_features=dataset[0].x.shape[1],
+            n_layers=hparams.n_layers,
+            hidden_channels=hparams.hidden_channels,
+            dim_out=len(prediction)*2,
+            only_positions=False
+        )
 
-        model.load_state_dict(base_state)  # <- critical
+        model.load_state_dict(base_state)
         model.to(device)
 
-        # --- FIX 3: unique model name per bootstrap ---
-        model_name = hparams.name_model() + f"_boot{b}"
-
-        # temporarily override naming
         original_name = hparams.study_name
-        hparams.study_name = model_name
+        hparams.study_name = original_name + f"_boot{b}"
 
-        # train
         train_model(model, train_loader, valid_loader, hparams)
 
-        # load best checkpoint
-        state_dict = torch.load("Models/"+hparams.name_model(), map_location=device)
+        state_dict = torch.load(
+            "Models/" + hparams.name_model(),
+            map_location=device
+        )
+
         model.load_state_dict(state_dict)
 
-        # test
+        # run test
         test_loss, err = test(test_loader, model, hparams)
 
-        # load saved outputs
-        preds = np.load("Outputs/outputs_"+hparams.name_model()+".npy")
-        trues = np.load("Outputs/trues_"+hparams.name_model()+".npy")
+        preds = np.load(
+            "Outputs/outputs_" + hparams.name_model() + ".npy"
+        )
 
-        all_preds.append(preds)
-        all_trues.append(trues)
+        trues = np.load(
+            "Outputs/trues_" + hparams.name_model() + ".npy"
+        )
 
-        # restore original name
+        preds = preds[:,0]
+        trues = trues[:,0]
+
+        # metrics
+        rmse = np.sqrt(np.mean((preds - trues)**2))
+        mae = np.mean(np.abs(preds - trues))
+
+        ss_res = np.sum((trues - preds)**2)
+        ss_tot = np.sum((trues - np.mean(trues))**2)
+
+        r2 = 1 - ss_res / ss_tot
+
+        r2_scores.append(r2)
+        rmse_scores.append(rmse)
+        mae_scores.append(mae)
+
         hparams.study_name = original_name
 
-    return np.array(all_preds), np.array(all_trues)
+    return {
+        "r2": np.array(r2_scores),
+        "rmse": np.array(rmse_scores),
+        "mae": np.array(mae_scores),
+    }
 
 def objective(trial):
     """
@@ -677,6 +733,8 @@ hparams = Hyperparameters(
     name=base_name
 )
 
+print(hparams)
+
 #Move to gpu/cpu
 if torch.cuda.is_available():
     device = torch.device('cuda') #gpu
@@ -685,45 +743,9 @@ else:
 
 print(device)
 
-B = 10  # number of bootstrap samples
+B = 50  # number of bootstrap samples
 
-bootstrap_preds, bootstrap_trues = run_bootstrap(train_data, valid_data, test_data, hparams, B=B)
-
-mean_preds = np.mean(bootstrap_preds, axis=0)
-var_preds  = np.var(bootstrap_preds, axis=0)
-
-print("Bootstrap variance (per sample):")
-print(var_preds)
-
-true, pred, err = denormalize(
-    bootstrap_trues[0],   # same for all bootstraps
-    mean_preds,
-    np.sqrt(var_preds),
-    type=sys.argv[1]
-)
-
-true = true[:,0]
-pred = pred[:,0]
-err  = err[:,0]
-
-r2_scores = []
-
-for b in range(B):
-    true_b = bootstrap_trues[b][:,0]
-    pred_b = bootstrap_preds[b][:,0]
-
-    ss_res = np.sum((true_b - pred_b)**2)
-    ss_tot = np.sum((true_b - np.mean(true_b))**2)
-    r2 = 1 - ss_res / ss_tot
-
-    r2_scores.append(r2)
-
-r2_scores = np.array(r2_scores)
-
-mean_r2 = np.mean(r2_scores)
-std_r2  = np.std(r2_scores)
-
-graph_dict = dict(true=true, pred=pred, err=err, mean_r2=mean_r2, std_r2=std_r2)
+results = run_bootstrap(dataset, hparams, B=B)
 
 with open(base_name+"_bootstrap_results",'wb') as f:
-    pickle.dump(graph_dict, f)
+    pickle.dump(results, f)
