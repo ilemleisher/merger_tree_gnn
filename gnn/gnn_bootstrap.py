@@ -215,36 +215,6 @@ def get_edges(subid,desid):
 
     return edge_index
 
-def split_dataset(dataset, train_size, valid_size, test_size):
-    """
-    This function splits the simulations into training, validation, and testing sets. 
-    The data are split at the simulation level so that the GNN cannot learn part of the parameter space it is tested on.
-    
-    Inputs:
-     - dataset - pytorch_geometric Data objects; one for each simulation
-     - train_size - the fractional proportion of training data (0,1) #most of data goes here, used to train nn
-     - valid_size - the fractional proportion of validation data (0,1) #checking how well the nn is doing
-     - test_size  - the fractional proportion of testing data (0,1) #data that gnn has never seen before, not part of training set. Makes prediction for each graph
-     
-    Returns:
-     - train_dataset - pytorch_geometric Data objects randomly selected to be in the training set
-     - valid_dataset - pytorch_geometric Data objects randomly selected to be in the validation set
-     - test_dataset  - pytorch_geometric Data objects randomly selected to be in the testing set
-    """
-
-    random.seed(5)
-    random.shuffle(dataset)
-    
-    ndata = len(dataset)
-    split_valid = int(np.floor(valid_size * ndata))
-    split_test = split_valid + int(np.floor(test_size * ndata))
-    
-    valid_dataset = dataset[:split_valid]
-    test_dataset = dataset[split_valid:split_test]
-    train_dataset = dataset[split_test:]
-    
-    return train_dataset, valid_dataset, test_dataset
-
 ## Hyperparameters
 
 class Hyperparameters():
@@ -624,7 +594,6 @@ for box in boxes:
     except:
         print(box)
 
-
 params = np.array(params)
 nparams = norm_params(params)
 if sys.argv[1] == 'WDM':
@@ -644,16 +613,7 @@ dataset = []
 for i in range(len(catalogs)):
     dataset.append(create_dataset(catalogs[i], params[i]))
 
-train_size = 0.8 #standard parameters
-valid_size = 0.1
-test_size  = 0.1
 batch_size = 32
-
-train_data, valid_data, test_data = split_dataset(dataset, train_size, valid_size, test_size)
-train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True) 
-valid_loader = DataLoader(valid_data, batch_size=batch_size, shuffle=True)
-test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
-
 base_name = str(sys.argv[2])
 name = base_name              #name that files will be saved as. Should be different for every unique GNN that you train
 prediction = [0]   
