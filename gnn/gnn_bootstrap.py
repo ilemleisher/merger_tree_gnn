@@ -186,13 +186,13 @@ def get_edges(subid,desid):
 
     start_edges = []
     end_edges = []
-    if sys.argv[4] == 'og':
+    if sys.argv[3] == 'og':
         for i in range(len(subid)):
             for j in range(len(desid)):
                 if subid[i] == desid[j]:
                     start_edges.append([i])
                     end_edges.append([j])
-    elif sys.argv[4] == 'ne':
+    elif sys.argv[3] == 'ne':
         for i in range(len(subid)):
             if i != len(subid) and i != len(subid)-1:
                 start_edges.append([i])
@@ -613,7 +613,8 @@ dataset = []
 for i in range(len(catalogs)):
     dataset.append(create_dataset(catalogs[i], params[i]))
 
-batch_size = 32
+batch_size=32
+
 base_name = str(sys.argv[2])
 name = base_name              #name that files will be saved as. Should be different for every unique GNN that you train
 prediction = [0]   
